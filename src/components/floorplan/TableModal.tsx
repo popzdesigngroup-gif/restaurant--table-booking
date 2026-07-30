@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { TableItem, Reservation } from '@/lib/types';
+import { useAuth } from '@/context/AuthContext';
 import { X, Calendar, Clock, Users, CreditCard, Sparkles, CheckCircle2, ShieldCheck, Heart, Wine } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { saveReservation } from '@/lib/storage';
@@ -22,17 +23,26 @@ export const TableModal: React.FC<TableModalProps> = ({
   onClose,
   onReservationComplete
 }) => {
+  const { user } = useAuth();
   const [step, setStep] = useState<'details' | 'checkout' | 'success'>('details');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [timeSlot, setTimeSlot] = useState('7:30 PM');
   const [guestCount, setGuestCount] = useState(Math.min(table.capacity, 2));
 
-  // Form Fields
-  const [guestName, setGuestName] = useState('');
-  const [guestEmail, setGuestEmail] = useState('');
-  const [guestPhone, setGuestPhone] = useState('');
+  // Form Fields prefilled from logged-in user
+  const [guestName, setGuestName] = useState(user?.name || '');
+  const [guestEmail, setGuestEmail] = useState(user?.email || '');
+  const [guestPhone, setGuestPhone] = useState(user?.phone || '');
   const [selectedRequests, setSelectedRequests] = useState<string[]>([]);
   const [confirmedReservation, setConfirmedReservation] = useState<Reservation | null>(null);
+
+  useEffect(() => {
+    if (user) {
+      if (!guestName) setGuestName(user.name);
+      if (!guestEmail) setGuestEmail(user.email);
+      if (!guestPhone) setGuestPhone(user.phone);
+    }
+  }, [user]);
 
   const availableSlots = ['5:00 PM', '5:45 PM', '6:30 PM', '7:15 PM', '8:00 PM', '8:45 PM', '9:30 PM'];
   const specialOptions = [
@@ -61,7 +71,6 @@ export const TableModal: React.FC<TableModalProps> = ({
   };
 
   const handleFinalizeBooking = () => {
-    // Save reservation
     const newRes = saveReservation({
       restaurantId,
       restaurantName,
@@ -81,7 +90,6 @@ export const TableModal: React.FC<TableModalProps> = ({
     setConfirmedReservation(newRes);
     setStep('success');
 
-    // Trigger celebratory confetti
     confetti({
       particleCount: 120,
       spread: 70,
@@ -100,7 +108,7 @@ export const TableModal: React.FC<TableModalProps> = ({
             <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
               {table.sectionName}
             </span>
-            <h2 className="text-xl font-bold text-white mt-1">Table {table.number}</h2>
+            <h2 className="text-xl font-bold text-white mt-1">Table {table.number} Booking</h2>
           </div>
           <button
             onClick={onClose}
@@ -201,9 +209,12 @@ export const TableModal: React.FC<TableModalProps> = ({
                 </div>
               </div>
 
-              {/* Customer Contact Details */}
+              {/* User Details Form (Pre-filled) */}
               <div className="space-y-3 border-t border-slate-800 pt-4">
-                <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider">Contact Information</h4>
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider">Guest Information</h4>
+                  {user && <span className="text-[10px] text-emerald-400 font-semibold">✓ Auto-filled from profile</span>}
+                </div>
                 <div>
                   <input
                     type="text"
@@ -285,41 +296,26 @@ export const TableModal: React.FC<TableModalProps> = ({
                   <span className="font-medium text-white">{date} at {timeSlot}</span>
                 </div>
                 <div className="flex justify-between text-slate-300">
-                  <span>Guests</span>
-                  <span className="font-medium text-white">{guestCount} Guests</span>
+                  <span>Guest</span>
+                  <span className="font-medium text-white">{guestName} ({guestPhone})</span>
                 </div>
                 <div className="border-t border-slate-800 pt-2 flex justify-between font-bold text-base text-white">
-                  <span>Total Payable Deposit</span>
+                  <span>Total Deposit</span>
                   <span className="text-emerald-400">{table.minimumSpend ? `$${table.minimumSpend}.00` : 'FREE (No Deposit)'}</span>
                 </div>
               </div>
 
-              {/* Simulated Payment Gateway */}
+              {/* Simulated Payment */}
               <div className="space-y-4">
                 <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
-                  <CreditCard className="w-4 h-4 text-emerald-400" /> Payment Method
+                  <CreditCard className="w-4 h-4 text-emerald-400" /> Confirm Payment & Reserve
                 </h4>
-
-                <div className="space-y-2">
-                  <div className="p-3.5 bg-slate-950 border border-emerald-500 rounded-xl flex items-center justify-between cursor-pointer">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center text-emerald-400 font-bold text-xs">
-                        💳
-                      </div>
-                      <div>
-                        <div className="text-sm font-semibold text-white">Credit / Debit Card</div>
-                        <div className="text-xs text-slate-400">Stripe Instant Checkout</div>
-                      </div>
-                    </div>
-                    <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-                  </div>
-                </div>
 
                 <button
                   onClick={handleFinalizeBooking}
                   className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-4 rounded-xl transition shadow-xl shadow-emerald-950/60 flex items-center justify-center gap-2 text-sm mt-4"
                 >
-                  <ShieldCheck className="w-5 h-5" /> Confirm & Reserve Table Now
+                  <ShieldCheck className="w-5 h-5" /> Confirm & Generate QR Reservation Pass
                 </button>
               </div>
             </div>
@@ -334,7 +330,7 @@ export const TableModal: React.FC<TableModalProps> = ({
               <div>
                 <h3 className="text-2xl font-black text-white">Reservation Confirmed!</h3>
                 <p className="text-sm text-slate-300 mt-1">
-                  We look forward to welcoming you at <span className="text-emerald-400 font-bold">{restaurantName}</span>.
+                  We look forward to welcoming you, <span className="text-white font-bold">{confirmedReservation.guestName}</span>.
                 </p>
               </div>
 
