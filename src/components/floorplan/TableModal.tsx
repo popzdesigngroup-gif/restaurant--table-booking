@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { TableItem, Reservation } from '@/lib/types';
 import { useAuth } from '@/context/AuthContext';
-import { X, Calendar, Clock, Users, CreditCard, Sparkles, CheckCircle2, ShieldCheck, UserCheck, Lock, Mail, Check } from 'lucide-react';
+import { X, Calendar, Clock, Users, CreditCard, Sparkles, CheckCircle2, ShieldCheck, UserCheck, Lock, Mail } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { saveReservation } from '@/lib/storage';
 import { sendBookingConfirmationEmail, EmailDispatchResult } from '@/lib/emailService';
@@ -38,7 +38,7 @@ export const TableModal: React.FC<TableModalProps> = ({
   const [confirmedReservation, setConfirmedReservation] = useState<Reservation | null>(null);
   const [emailStatus, setEmailStatus] = useState<EmailDispatchResult | null>(null);
 
-  // Quick Inline Sign-In state if not signed in
+  // Clean Inline Sign-In state
   const [signInEmail, setSignInEmail] = useState('');
   const [signInName, setSignInName] = useState('');
 
@@ -70,11 +70,7 @@ export const TableModal: React.FC<TableModalProps> = ({
   const handleInlineLogin = (e: React.FormEvent) => {
     e.preventDefault();
     if (!signInEmail) return;
-    login(signInEmail, 'customer', signInName || 'Alex Wright');
-  };
-
-  const handleQuickDemoCustomerLogin = () => {
-    login('alex.wright@example.com', 'customer', 'Alex Wright', '+1 (555) 234-5678');
+    login(signInEmail, 'demo', signInName || 'Customer Account');
   };
 
   const handleProceedToCheckout = (e: React.FormEvent) => {
@@ -161,20 +157,7 @@ export const TableModal: React.FC<TableModalProps> = ({
                 </p>
               </div>
 
-              <button
-                type="button"
-                onClick={handleQuickDemoCustomerLogin}
-                className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl text-xs transition shadow-lg flex items-center justify-center gap-2"
-              >
-                <UserCheck className="w-4 h-4" /> Sign In as Alex Wright (Instant 1-Click)
-              </button>
-
-              <div className="relative flex py-1 items-center">
-                <div className="flex-grow border-t border-slate-800"></div>
-                <span className="flex-shrink mx-4 text-[10px] text-slate-500 uppercase tracking-wider font-bold">or sign in with email</span>
-                <div className="flex-grow border-t border-slate-800"></div>
-              </div>
-
+              {/* Standard Inline Sign-In Form */}
               <form onSubmit={handleInlineLogin} className="space-y-3">
                 <div>
                   <input
@@ -183,6 +166,7 @@ export const TableModal: React.FC<TableModalProps> = ({
                     value={signInName}
                     onChange={(e) => setSignInName(e.target.value)}
                     className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500"
+                    required
                   />
                 </div>
                 <div>
@@ -197,7 +181,7 @@ export const TableModal: React.FC<TableModalProps> = ({
                 </div>
                 <button
                   type="submit"
-                  className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 rounded-xl text-xs transition"
+                  className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl text-xs transition shadow-lg"
                 >
                   Sign In & Continue Booking &rarr;
                 </button>
@@ -384,7 +368,6 @@ export const TableModal: React.FC<TableModalProps> = ({
                     </p>
                   </div>
 
-                  {/* Email Sent Notification Badge */}
                   {emailStatus && (
                     <div className="p-3 bg-emerald-950/80 border border-emerald-500/40 rounded-xl text-xs text-emerald-300 flex items-center justify-between animate-fade-in">
                       <div className="flex items-center gap-2">
@@ -395,7 +378,6 @@ export const TableModal: React.FC<TableModalProps> = ({
                     </div>
                   )}
 
-                  {/* QR Code Pass */}
                   <div className="bg-slate-950 p-6 rounded-2xl border border-slate-800 max-w-sm mx-auto shadow-inner flex flex-col items-center">
                     <QRCodeModal value={confirmedReservation.qrCode || confirmedReservation.id} />
                     <div className="mt-4 text-xs text-slate-400">

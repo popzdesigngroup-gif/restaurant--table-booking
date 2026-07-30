@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Navbar } from '@/components/ui/Navbar';
+import { useAuth } from '@/context/AuthContext';
 import { getStoredRestaurantById, getStoredReservations } from '@/lib/storage';
 import { Restaurant, Reservation } from '@/lib/types';
 import {
@@ -16,38 +17,47 @@ import {
   Radio,
   Clock,
   ShieldCheck,
-  Play,
-  Pause,
-  Bell,
+  UserPlus,
+  Trash2,
   CheckCircle2,
   ChevronRight,
   TrendingUp,
   Flame,
-  Settings
+  Settings,
+  Mail
 } from 'lucide-react';
 import Link from 'next/link';
 
 export default function AdminMonitoringDashboardPage() {
+  const { managers, addManagerAccess, removeManagerAccess } = useAuth();
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [isLiveSync, setIsLiveSync] = useState(true);
   const [emergencyLockout, setEmergencyLockout] = useState(false);
-  const [systemLogs, setSystemLogs] = useState<{ id: string; time: string; type: 'info' | 'success' | 'warn'; msg: string }[]>([]);
+
+  // New Manager Provisioning Form State
+  const [newManagerName, setNewManagerName] = useState('');
+  const [newManagerEmail, setNewManagerEmail] = useState('');
+  const [provisionSuccessMsg, setProvisionSuccessMsg] = useState('');
 
   useEffect(() => {
     const data = getStoredRestaurantById('rest-1');
     if (data) setRestaurant(data);
     const res = getStoredReservations();
     setReservations(res);
-
-    // Initial system logs feed
-    setSystemLogs([
-      { id: '1', time: new Date(Date.now() - 60000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }), type: 'success', msg: 'QR Code verified: Guest Alex Wright checked in at Table W-02' },
-      { id: '2', time: new Date(Date.now() - 180000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }), type: 'info', msg: 'New instant booking received: Table TR-01 (Al Fresco Terrace)' },
-      { id: '3', time: new Date(Date.now() - 360000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }), type: 'warn', msg: 'Table T-13 flagged for maintenance check by staff' },
-      { id: '4', time: new Date(Date.now() - 600000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }), type: 'info', msg: 'AI Concierge served 48 table recommendations in last hour' }
-    ]);
   }, []);
+
+  const handleAddManager = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newManagerEmail || !newManagerName) return;
+
+    addManagerAccess(newManagerName, newManagerEmail, 'rest-1');
+    setProvisionSuccessMsg(`Granted Manager Access to ${newManagerName} (${newManagerEmail})!`);
+    setNewManagerName('');
+    setNewManagerEmail('');
+
+    setTimeout(() => setProvisionSuccessMsg(''), 4000);
+  };
 
   if (!restaurant) {
     return (
@@ -78,13 +88,13 @@ export default function AdminMonitoringDashboardPage() {
           <div>
             <div className="flex items-center gap-3">
               <h1 className="text-3xl font-black text-white flex items-center gap-2.5">
-                <Activity className="w-8 h-8 text-emerald-400" /> Admin Monitoring Control Center
+                <Activity className="w-8 h-8 text-emerald-400" /> Admin Monitoring & Staff Control Center
               </h1>
               <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold animate-pulse">
                 <Radio className="w-3.5 h-3.5" /> LIVE MONITORING
               </span>
             </div>
-            <p className="text-sm text-slate-400 mt-1">Real-time floor state synchronization, system telemetry, live event log, and operational controls.</p>
+            <p className="text-sm text-slate-400 mt-1">Real-time telemetry, live occupancy heatmap, and Manager Access Provisioning.</p>
           </div>
 
           <div className="flex items-center gap-3">
@@ -179,11 +189,11 @@ export default function AdminMonitoringDashboardPage() {
 
           <div className="p-5 bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-800 rounded-2xl shadow-xl space-y-2">
             <div className="flex items-center justify-between text-slate-400 text-xs font-semibold">
-              <span>Maintenance / Out of Order</span>
-              <AlertTriangle className="w-4 h-4 text-amber-400" />
+              <span>Provisioned Managers</span>
+              <UserPlus className="w-4 h-4 text-teal-400" />
             </div>
-            <div className="text-3xl font-black text-amber-400">{maintenanceCount} <span className="text-xs font-normal text-slate-400">Table</span></div>
-            <div className="text-xs text-amber-400/80 font-medium">Table T-13 blocked</div>
+            <div className="text-3xl font-black text-teal-400">{managers.length} <span className="text-xs font-normal text-slate-400">Accounts</span></div>
+            <div className="text-xs text-slate-400 font-medium">Floor layout access enabled</div>
           </div>
 
           <div className="p-5 bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-800 rounded-2xl shadow-xl space-y-2">
@@ -198,86 +208,81 @@ export default function AdminMonitoringDashboardPage() {
           </div>
         </div>
 
-        {/* Middle Section: Live Activity Feed & Quick Admin Navigation */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Live Activity Telemetry Feed (2 Cols) */}
-          <div className="lg:col-span-2 bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <Bell className="w-4 h-4 text-emerald-400" /> Real-Time Operational Event Feed
+        {/* Manager Access Control & Provisioning Panel */}
+        <div className="bg-slate-900 border border-teal-500/40 p-6 rounded-2xl shadow-2xl space-y-6">
+          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-4">
+            <div>
+              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                <UserPlus className="w-5 h-5 text-teal-400" /> Manager Access Control & Provisioning
               </h3>
-              <span className="text-[11px] text-slate-400">Auto-refreshing every 5s</span>
-            </div>
-
-            <div className="space-y-3 max-h-[340px] overflow-y-auto pr-1">
-              {systemLogs.map((log) => (
-                <div
-                  key={log.id}
-                  className="p-3.5 bg-slate-950 border border-slate-800/80 rounded-xl flex items-start justify-between gap-3 text-xs"
-                >
-                  <div className="flex items-start gap-3">
-                    <span
-                      className={`w-2.5 h-2.5 rounded-full mt-1 shrink-0 ${
-                        log.type === 'success' ? 'bg-emerald-400 shadow-[0_0_8px_#10b981]' : log.type === 'warn' ? 'bg-amber-400 shadow-[0_0_8px_#f59e0b]' : 'bg-indigo-400'
-                      }`}
-                    />
-                    <div>
-                      <div className="font-semibold text-slate-200">{log.msg}</div>
-                      <div className="text-[10px] text-slate-500 mt-0.5">Floor layout floor-main • System Event</div>
-                    </div>
-                  </div>
-                  <span className="font-mono text-[10px] text-slate-400 shrink-0">{log.time}</span>
-                </div>
-              ))}
+              <p className="text-xs text-slate-400 mt-0.5">
+                Grant manager credentials to staff members to allow them to edit floor plan layouts and allocate seats.
+              </p>
             </div>
           </div>
 
-          {/* Quick Management Shortcuts (1 Col) */}
-          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl space-y-4">
-            <h3 className="text-base font-bold text-white">Monitoring Shortcuts</h3>
-            
-            <div className="space-y-3">
-              <Link
-                href="/admin/editor"
-                className="p-4 bg-slate-950 hover:bg-slate-800/80 border border-slate-800 rounded-xl flex items-center justify-between transition group"
-              >
-                <div className="flex items-center gap-3">
-                  <Settings className="w-5 h-5 text-emerald-400 group-hover:rotate-45 transition-transform duration-300" />
-                  <div>
-                    <div className="font-bold text-white text-xs">Floor Plan Editor</div>
-                    <div className="text-[11px] text-slate-400">Drag & drop canvas elements</div>
-                  </div>
-                </div>
-                <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-white transition" />
-              </Link>
+          {provisionSuccessMsg && (
+            <div className="p-3 bg-emerald-950/80 border border-emerald-500/40 rounded-xl text-xs text-emerald-300 font-semibold flex items-center gap-2 animate-fade-in">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>{provisionSuccessMsg}</span>
+            </div>
+          )}
 
-              <Link
-                href="/admin/reservations"
-                className="p-4 bg-slate-950 hover:bg-slate-800/80 border border-slate-800 rounded-xl flex items-center justify-between transition group"
+          {/* Form to Add New Manager */}
+          <form onSubmit={handleAddManager} className="grid grid-cols-1 md:grid-cols-3 gap-3 bg-slate-950 p-4 rounded-xl border border-slate-800">
+            <div>
+              <label className="text-xs text-slate-400 font-semibold block mb-1">Manager Full Name</label>
+              <input
+                type="text"
+                placeholder="e.g. Marcus Vance"
+                value={newManagerName}
+                onChange={(e) => setNewManagerName(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-teal-500"
+                required
+              />
+            </div>
+            <div>
+              <label className="text-xs text-slate-400 font-semibold block mb-1">Manager Email Address</label>
+              <input
+                type="email"
+                placeholder="marcus@restaurant.com"
+                value={newManagerEmail}
+                onChange={(e) => setNewManagerEmail(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-teal-500"
+                required
+              />
+            </div>
+            <div className="flex items-end">
+              <button
+                type="submit"
+                className="w-full bg-teal-600 hover:bg-teal-500 text-white font-bold py-2 px-4 rounded-xl text-xs transition shadow-lg flex items-center justify-center gap-2"
               >
-                <div className="flex items-center gap-3">
-                  <CalendarCheck className="w-5 h-5 text-indigo-400" />
-                  <div>
-                    <div className="font-bold text-white text-xs">Live Reservation Manager</div>
-                    <div className="text-[11px] text-slate-400">Scan QR codes & seat guests</div>
-                  </div>
-                </div>
-                <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-white transition" />
-              </Link>
+                <UserPlus className="w-4 h-4" /> Grant Manager Access
+              </button>
+            </div>
+          </form>
 
-              <Link
-                href="/admin/analytics"
-                className="p-4 bg-slate-950 hover:bg-slate-800/80 border border-slate-800 rounded-xl flex items-center justify-between transition group"
-              >
-                <div className="flex items-center gap-3">
-                  <Flame className="w-5 h-5 text-amber-400" />
+          {/* Active Provisioned Managers List */}
+          <div className="space-y-2">
+            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Active Provisioned Managers ({managers.length})</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {managers.map((mgr) => (
+                <div key={mgr.id} className="p-3.5 bg-slate-950 border border-slate-800 rounded-xl flex items-center justify-between">
                   <div>
-                    <div className="font-bold text-white text-xs">Occupancy Heatmap</div>
-                    <div className="text-[11px] text-slate-400">Heat intensity & peak hours</div>
+                    <div className="font-bold text-white text-xs">{mgr.name}</div>
+                    <div className="text-[11px] text-slate-400 flex items-center gap-1 mt-0.5">
+                      <Mail className="w-3 h-3 text-teal-400" /> {mgr.email}
+                    </div>
                   </div>
+                  <button
+                    onClick={() => removeManagerAccess(mgr.id)}
+                    className="p-1.5 bg-red-950/60 hover:bg-red-900 text-red-400 rounded-lg transition"
+                    title="Revoke Manager Access"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
-                <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-white transition" />
-              </Link>
+              ))}
             </div>
           </div>
         </div>
