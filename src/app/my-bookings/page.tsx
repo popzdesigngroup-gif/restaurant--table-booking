@@ -4,29 +4,36 @@ import React, { useState, useEffect } from 'react';
 import { Navbar } from '@/components/ui/Navbar';
 import { useAuth } from '@/context/AuthContext';
 import { getStoredReservationsForUser, getStoredReservations } from '@/lib/storage';
+import { sendBookingConfirmationEmail } from '@/lib/emailService';
 import { Reservation } from '@/lib/types';
 import { QRCodeModal } from '@/components/ui/QRCodeModal';
-import { CalendarCheck, QrCode, Clock, MapPin, Users, CheckCircle, Lock, ShieldCheck, XCircle } from 'lucide-react';
+import { CalendarCheck, QrCode, Clock, MapPin, Users, CheckCircle, Lock, Mail, Send, XCircle } from 'lucide-react';
 import Link from 'next/link';
 
 export default function MyBookingsPage() {
   const { user, isManager } = useAuth();
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [selectedQR, setSelectedQR] = useState<Reservation | null>(null);
+  const [resendStatus, setResendStatus] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
       if (isManager) {
-        // Managers/Admins can inspect all reservations
         setReservations(getStoredReservations());
       } else {
-        // Customers see ONLY their own isolated reservations!
         setReservations(getStoredReservationsForUser(user.email));
       }
     } else {
       setReservations([]);
     }
   }, [user, isManager]);
+
+  const handleResendEmail = async (res: Reservation) => {
+    setResendStatus(`Sending confirmation email to ${res.guestEmail}...`);
+    await sendBookingConfirmationEmail(res);
+    setResendStatus(`Email confirmation successfully dispatched to ${res.guestEmail}!`);
+    setTimeout(() => setResendStatus(null), 4000);
+  };
 
   const getStatusBadge = (status: Reservation['status']) => {
     switch (status) {
@@ -76,7 +83,7 @@ export default function MyBookingsPage() {
                 <CalendarCheck className="w-8 h-8 text-emerald-400" /> My Table Reservations
               </h1>
               <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2.5 py-0.5 rounded-full font-bold">
-                ISOLATED USER DATA ({user.email})
+                ACCOUNT ({user.email})
               </span>
             </div>
             <p className="text-sm text-slate-400 mt-1">
@@ -84,6 +91,13 @@ export default function MyBookingsPage() {
             </p>
           </div>
         </div>
+
+        {resendStatus && (
+          <div className="p-3.5 bg-emerald-950/80 border border-emerald-500/40 rounded-xl text-xs text-emerald-300 font-semibold flex items-center gap-2 animate-fade-in">
+            <Mail className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span>{resendStatus}</span>
+          </div>
+        )}
 
         {reservations.length === 0 ? (
           <div className="bg-slate-900 border border-slate-800 p-12 rounded-2xl text-center space-y-4">
@@ -135,12 +149,20 @@ export default function MyBookingsPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 border-t md:border-t-0 md:border-l border-slate-800 pt-4 md:pt-0 md:pl-6">
+                <div className="flex flex-col sm:flex-row items-center gap-2 border-t md:border-t-0 md:border-l border-slate-800 pt-4 md:pt-0 md:pl-6">
                   <button
                     onClick={() => setSelectedQR(res)}
-                    className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition shadow-lg shadow-emerald-950/40"
+                    className="w-full sm:w-auto flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition shadow-lg shadow-emerald-950/40"
                   >
                     <QrCode className="w-4 h-4" /> View QR Pass
+                  </button>
+
+                  <button
+                    onClick={() => handleResendEmail(res)}
+                    className="w-full sm:w-auto flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold px-3 py-2.5 rounded-xl text-xs transition"
+                    title="Send Copy to Email Inbox"
+                  >
+                    <Send className="w-3.5 h-3.5 text-emerald-400" /> Email Pass
                   </button>
                 </div>
               </div>
@@ -167,14 +189,23 @@ export default function MyBookingsPage() {
             <div className="text-xs text-slate-300 space-y-1">
               <div>Table {selectedQR.tableNumber} • {selectedQR.guestCount} Guests</div>
               <div>{selectedQR.date} at {selectedQR.timeSlot}</div>
+              <div className="text-[11px] text-slate-400">Email: {selectedQR.guestEmail}</div>
             </div>
 
-            <button
-              onClick={() => setSelectedQR(null)}
-              className="w-full bg-slate-800 hover:bg-slate-700 text-white py-2.5 rounded-xl text-xs font-semibold transition mt-2"
-            >
-              Close Pass
-            </button>
+            <div className="pt-2 space-y-2">
+              <button
+                onClick={() => handleResendEmail(selectedQR)}
+                className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 rounded-xl text-xs transition flex items-center justify-center gap-2"
+              >
+                <Mail className="w-3.5 h-3.5" /> Send Pass Copy to {selectedQR.guestEmail}
+              </button>
+              <button
+                onClick={() => setSelectedQR(null)}
+                className="w-full bg-slate-800 hover:bg-slate-700 text-white py-2 rounded-xl text-xs font-semibold transition"
+              >
+                Close Pass
+              </button>
+            </div>
           </div>
         </div>
       )}
