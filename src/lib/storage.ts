@@ -1,5 +1,6 @@
 import { Restaurant, Reservation, TableItem } from './types';
 import { INITIAL_RESTAURANTS, INITIAL_RESERVATIONS } from './mockData';
+import { supabase } from './supabase';
 
 const RESTAURANTS_KEY = 'tablevibe_restaurants';
 const RESERVATIONS_KEY = 'tablevibe_reservations';
@@ -33,6 +34,17 @@ export const updateStoredRestaurant = (updated: Restaurant): void => {
     list.push(updated);
   }
   localStorage.setItem(RESTAURANTS_KEY, JSON.stringify(list));
+
+  // Sync to Supabase asynchronously if client is initialized
+  if (supabase) {
+    Promise.resolve(
+      supabase.from('restaurants').upsert({
+        id: updated.id,
+        name: updated.name,
+        payload: updated
+      })
+    ).catch(err => console.warn('Supabase sync warning:', err));
+  }
 };
 
 export const updateTableStatus = (restaurantId: string, floorId: string, tableId: string, status: TableItem['status']): void => {
@@ -80,7 +92,25 @@ export const saveReservation = (res: Omit<Reservation, 'id' | 'createdAt' | 'qrC
     localStorage.setItem(RESERVATIONS_KEY, JSON.stringify(reservations));
   }
 
-  // Also update table status in restaurant layout to 'booked'
+  // Sync to Supabase asynchronously if client is initialized
+  if (supabase) {
+    Promise.resolve(
+      supabase.from('reservations').insert({
+        id: newId,
+        restaurant_id: res.restaurantId,
+        table_number: res.tableNumber,
+        guest_name: res.guestName,
+        guest_email: res.guestEmail,
+        date: res.date,
+        time_slot: res.timeSlot,
+        status: res.status,
+        qr_code: qrCode,
+        payload: newReservation
+      })
+    ).catch(err => console.warn('Supabase reservation sync warning:', err));
+  }
+
+  // Update table status in restaurant layout
   const restaurant = getStoredRestaurantById(res.restaurantId);
   if (restaurant && restaurant.floors.length > 0) {
     for (const floor of restaurant.floors) {
