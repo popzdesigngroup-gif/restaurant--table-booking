@@ -2,19 +2,23 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
+export type UserRole = 'customer' | 'manager' | 'admin';
+
 export interface UserProfile {
   id: string;
   name: string;
   email: string;
   phone: string;
-  role: 'customer' | 'admin';
+  role: UserRole;
   avatarUrl?: string;
 }
 
 interface AuthContextType {
   user: UserProfile | null;
-  login: (email: string, role: 'customer' | 'admin', name?: string, phone?: string) => void;
+  login: (email: string, role: UserRole, name?: string, phone?: string) => void;
   logout: () => void;
+  isCustomer: boolean;
+  isManager: boolean;
   isAdmin: boolean;
   isInitialized: boolean;
 }
@@ -23,6 +27,8 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   login: () => {},
   logout: () => {},
+  isCustomer: true,
+  isManager: false,
   isAdmin: false,
   isInitialized: false
 });
@@ -47,10 +53,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
-  const login = (email: string, role: 'customer' | 'admin', name?: string, phone?: string) => {
+  const login = (email: string, role: UserRole, name?: string, phone?: string) => {
+    const defaultName =
+      role === 'admin'
+        ? 'Super Admin Monitor'
+        : role === 'manager'
+        ? 'Floor Layout Manager'
+        : email.split('@')[0];
+
     const newUser: UserProfile = {
       id: `usr-${Date.now()}`,
-      name: name || (role === 'admin' ? 'Restaurant Manager' : email.split('@')[0]),
+      name: name || defaultName,
       email,
       phone: phone || '+1 (555) 019-2831',
       role
@@ -74,6 +87,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         user,
         login,
         logout,
+        isCustomer: !user || user.role === 'customer',
+        isManager: user?.role === 'manager' || user?.role === 'admin',
         isAdmin: user?.role === 'admin',
         isInitialized
       }}
