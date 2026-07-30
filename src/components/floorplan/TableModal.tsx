@@ -3,9 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import { TableItem, Reservation } from '@/lib/types';
 import { useAuth } from '@/context/AuthContext';
-import { X, Calendar, Clock, Users, CreditCard, Sparkles, CheckCircle2, ShieldCheck, UserCheck, Lock, Mail, ArrowRight } from 'lucide-react';
+import { X, Calendar, Clock, Users, CreditCard, Sparkles, CheckCircle2, ShieldCheck, UserCheck, Lock, Mail, Check } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { saveReservation } from '@/lib/storage';
+import { sendBookingConfirmationEmail, EmailDispatchResult } from '@/lib/emailService';
 import { QRCodeModal } from '@/components/ui/QRCodeModal';
 
 interface TableModalProps {
@@ -35,6 +36,7 @@ export const TableModal: React.FC<TableModalProps> = ({
   const [guestPhone, setGuestPhone] = useState(user?.phone || '');
   const [selectedRequests, setSelectedRequests] = useState<string[]>([]);
   const [confirmedReservation, setConfirmedReservation] = useState<Reservation | null>(null);
+  const [emailStatus, setEmailStatus] = useState<EmailDispatchResult | null>(null);
 
   // Quick Inline Sign-In state if not signed in
   const [signInEmail, setSignInEmail] = useState('');
@@ -88,7 +90,7 @@ export const TableModal: React.FC<TableModalProps> = ({
     setStep('checkout');
   };
 
-  const handleFinalizeBooking = () => {
+  const handleFinalizeBooking = async () => {
     const newRes = saveReservation({
       restaurantId,
       restaurantName,
@@ -107,6 +109,10 @@ export const TableModal: React.FC<TableModalProps> = ({
 
     setConfirmedReservation(newRes);
     setStep('success');
+
+    // Trigger automated email dispatch
+    const emailResult = await sendBookingConfirmationEmail(newRes);
+    setEmailStatus(emailResult);
 
     confetti({
       particleCount: 120,
@@ -128,7 +134,7 @@ export const TableModal: React.FC<TableModalProps> = ({
                 {table.sectionName}
               </span>
               <span className="text-[10px] bg-amber-500/20 text-amber-300 px-2.5 py-0.5 rounded-full border border-amber-500/30 font-bold">
-                🔐 SIGN-IN REQUIRED FOR ACCOUNT REFERENCES
+                🔐 SIGN-IN REQUIRED
               </span>
             </div>
             <h2 className="text-xl font-bold text-white mt-1">Reserve Table {table.number}</h2>
@@ -143,7 +149,6 @@ export const TableModal: React.FC<TableModalProps> = ({
 
         {/* Content Body */}
         <div className="p-6 overflow-y-auto space-y-6">
-          {/* REQUIRE SIGN IN CHECK IF NOT LOGGED IN */}
           {!user ? (
             <div className="bg-slate-950 p-6 rounded-2xl border border-slate-800 space-y-5">
               <div className="text-center space-y-2">
@@ -152,11 +157,10 @@ export const TableModal: React.FC<TableModalProps> = ({
                 </div>
                 <h3 className="text-lg font-bold text-white">Sign In Required to Reserve Table</h3>
                 <p className="text-xs text-slate-400 max-w-md mx-auto">
-                  To save your reservation history, view digital QR passes, and manage future visits, please sign in to your account.
+                  To save your reservation history, receive an automated email copy, and view digital QR passes, please sign in.
                 </p>
               </div>
 
-              {/* Quick Preset Sign In */}
               <button
                 type="button"
                 onClick={handleQuickDemoCustomerLogin}
@@ -171,7 +175,6 @@ export const TableModal: React.FC<TableModalProps> = ({
                 <div className="flex-grow border-t border-slate-800"></div>
               </div>
 
-              {/* Inline Sign-In Form */}
               <form onSubmit={handleInlineLogin} className="space-y-3">
                 <div>
                   <input
@@ -204,7 +207,6 @@ export const TableModal: React.FC<TableModalProps> = ({
             <>
               {step === 'details' && (
                 <form onSubmit={handleProceedToCheckout} className="space-y-6">
-                  {/* Account Badge Indicator */}
                   <div className="p-3 bg-emerald-950/60 border border-emerald-500/40 rounded-xl flex items-center justify-between text-xs">
                     <div className="flex items-center gap-2 text-emerald-300 font-semibold">
                       <UserCheck className="w-4 h-4" /> Signed in as {user.name} ({user.email})
@@ -212,7 +214,6 @@ export const TableModal: React.FC<TableModalProps> = ({
                     <span className="text-[10px] text-emerald-400 font-bold">Account Verified</span>
                   </div>
 
-                  {/* Table Info Specs */}
                   <div className="grid grid-cols-3 gap-3 bg-slate-950/80 p-4 rounded-xl border border-slate-800 text-center">
                     <div>
                       <div className="text-xs text-slate-400">Capacity</div>
@@ -230,7 +231,6 @@ export const TableModal: React.FC<TableModalProps> = ({
                     </div>
                   </div>
 
-                  {/* Highlights */}
                   <div>
                     <label className="text-xs text-slate-400 font-medium block mb-2">Table Highlights</label>
                     <div className="flex flex-wrap gap-2">
@@ -242,7 +242,6 @@ export const TableModal: React.FC<TableModalProps> = ({
                     </div>
                   </div>
 
-                  {/* Date & Time Selection */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="text-xs font-semibold text-slate-300 block mb-1.5 flex items-center gap-1.5">
@@ -276,7 +275,6 @@ export const TableModal: React.FC<TableModalProps> = ({
                     </div>
                   </div>
 
-                  {/* Time Slots */}
                   <div>
                     <label className="text-xs font-semibold text-slate-300 block mb-2 flex items-center gap-1.5">
                       <Clock className="w-4 h-4 text-emerald-400" /> Available Time Slots
@@ -299,7 +297,6 @@ export const TableModal: React.FC<TableModalProps> = ({
                     </div>
                   </div>
 
-                  {/* Special Addons */}
                   <div>
                     <label className="text-xs font-semibold text-slate-300 block mb-2">Special Enhancements</label>
                     <div className="grid grid-cols-2 gap-2">
@@ -338,8 +335,8 @@ export const TableModal: React.FC<TableModalProps> = ({
                   <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3 text-sm">
                     <h3 className="font-bold text-white text-base">Booking Summary</h3>
                     <div className="flex justify-between text-slate-300">
-                      <span>Account</span>
-                      <span className="font-medium text-white">{user.name} ({user.email})</span>
+                      <span>Account Email</span>
+                      <span className="font-medium text-emerald-400">{user.email}</span>
                     </div>
                     <div className="flex justify-between text-slate-300">
                       <span>Restaurant</span>
@@ -361,14 +358,14 @@ export const TableModal: React.FC<TableModalProps> = ({
 
                   <div className="space-y-4">
                     <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
-                      <CreditCard className="w-4 h-4 text-emerald-400" /> Confirm & Issue Account QR Pass
+                      <CreditCard className="w-4 h-4 text-emerald-400" /> Confirm & Issue Account Pass
                     </h4>
 
                     <button
                       onClick={handleFinalizeBooking}
                       className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-4 rounded-xl transition shadow-xl shadow-emerald-950/60 flex items-center justify-center gap-2 text-sm mt-4"
                     >
-                      <ShieldCheck className="w-5 h-5" /> Confirm & Save Reservation to Account
+                      <ShieldCheck className="w-5 h-5" /> Confirm & Send Copy to {user.email}
                     </button>
                   </div>
                 </div>
@@ -383,15 +380,26 @@ export const TableModal: React.FC<TableModalProps> = ({
                   <div>
                     <h3 className="text-2xl font-black text-white">Reservation Confirmed!</h3>
                     <p className="text-sm text-slate-300 mt-1">
-                      Saved to your account, <span className="text-white font-bold">{confirmedReservation.guestName}</span>. Access it anytime under My Bookings!
+                      We've reserved your table and sent a digital copy to your email address!
                     </p>
                   </div>
+
+                  {/* Email Sent Notification Badge */}
+                  {emailStatus && (
+                    <div className="p-3 bg-emerald-950/80 border border-emerald-500/40 rounded-xl text-xs text-emerald-300 flex items-center justify-between animate-fade-in">
+                      <div className="flex items-center gap-2">
+                        <Mail className="w-4 h-4 text-emerald-400" />
+                        <span>Confirmation email dispatched to <strong>{emailStatus.recipientEmail}</strong></span>
+                      </div>
+                      <span className="text-[10px] font-mono opacity-80">{emailStatus.messageId}</span>
+                    </div>
+                  )}
 
                   {/* QR Code Pass */}
                   <div className="bg-slate-950 p-6 rounded-2xl border border-slate-800 max-w-sm mx-auto shadow-inner flex flex-col items-center">
                     <QRCodeModal value={confirmedReservation.qrCode || confirmedReservation.id} />
                     <div className="mt-4 text-xs text-slate-400">
-                      Account Pass: <span className="font-mono text-emerald-400 font-bold">{confirmedReservation.qrCode}</span>
+                      Account Pass Code: <span className="font-mono text-emerald-400 font-bold">{confirmedReservation.qrCode}</span>
                     </div>
                     <div className="text-xs text-slate-500 mt-1">Show this QR code upon entry for instant check-in.</div>
                   </div>
