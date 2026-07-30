@@ -46,10 +46,10 @@ export default function LoginPage() {
             <UtensilsCrossed className="w-6 h-6" />
           </div>
           <h1 className="text-2xl font-black text-white">Sign In to TableVibe</h1>
-          <p className="text-xs text-slate-400">Access your table reservations or manage floor layout operations.</p>
+          <p className="text-xs text-slate-400">Login credentials determine your portal views and administrative permissions.</p>
         </div>
 
-        {/* Role Tab Selector */}
+        {/* Role Credentials Tab Selector */}
         <div className="flex bg-slate-900 border border-slate-800 p-1.5 rounded-2xl">
           <button
             onClick={() => setRoleTab('customer')}
@@ -59,7 +59,7 @@ export default function LoginPage() {
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            <UserCheck className="w-4 h-4" /> Customer Portal
+            <UserCheck className="w-4 h-4" /> Customer Account
           </button>
           <button
             onClick={() => setRoleTab('admin')}
@@ -69,27 +69,31 @@ export default function LoginPage() {
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            <ShieldCheck className="w-4 h-4" /> Restaurant Owner / Admin
+            <ShieldCheck className="w-4 h-4" /> Admin Credentials
           </button>
         </div>
 
-        {/* Quick Demo Login Credentials */}
+        {/* Closed-Loop Quick Credentials Login */}
         <div className="bg-slate-900/60 border border-slate-800 p-4 rounded-2xl space-y-2">
-          <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Instant Quick Access</div>
+          <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Quick Credential Presets</div>
           <div className="grid grid-cols-2 gap-2">
             <button
               onClick={() => handleDemoLogin('customer')}
-              className="p-3 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-xl text-left transition"
+              className="p-3 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-xl text-left transition flex flex-col justify-between"
             >
-              <div className="font-bold text-white text-xs">👤 Demo Customer</div>
-              <div className="text-[10px] text-slate-400">Alex Wright</div>
+              <div className="font-bold text-white text-xs flex items-center gap-1.5">
+                <UserCheck className="w-3.5 h-3.5 text-emerald-400" /> Customer Account
+              </div>
+              <div className="text-[10px] text-slate-400 mt-1">Alex Wright</div>
             </button>
             <button
               onClick={() => handleDemoLogin('admin')}
-              className="p-3 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-xl text-left transition"
+              className="p-3 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-xl text-left transition flex flex-col justify-between"
             >
-              <div className="font-bold text-white text-xs">🔑 Demo Admin</div>
-              <div className="text-[10px] text-slate-400">Restaurant Manager</div>
+              <div className="font-bold text-white text-xs flex items-center gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5 text-indigo-400" /> Admin Credentials
+              </div>
+              <div className="text-[10px] text-slate-400 mt-1">Restaurant Manager</div>
             </button>
           </div>
         </div>
@@ -97,7 +101,7 @@ export default function LoginPage() {
         {/* Credential Form */}
         <form onSubmit={handleSubmit} className="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl space-y-4">
           <h3 className="text-sm font-bold text-white uppercase tracking-wider">
-            {roleTab === 'admin' ? 'Admin Credentials' : 'Customer Credentials'}
+            {roleTab === 'admin' ? 'Restaurant Manager Credentials' : 'Customer Account Credentials'}
           </h3>
 
           <div>
@@ -106,7 +110,7 @@ export default function LoginPage() {
               <UserCheck className="w-4 h-4 text-slate-400" />
               <input
                 type="text"
-                placeholder={roleTab === 'admin' ? 'Manager Name' : 'Alex Wright'}
+                placeholder={roleTab === 'admin' ? 'Restaurant Manager' : 'Alex Wright'}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 className="bg-transparent text-xs text-white focus:outline-none w-full"
@@ -120,7 +124,7 @@ export default function LoginPage() {
               <Mail className="w-4 h-4 text-slate-400" />
               <input
                 type="email"
-                placeholder={roleTab === 'admin' ? 'admin@restaurant.com' : 'alex@example.com'}
+                placeholder={roleTab === 'admin' ? 'admin@lumina.com' : 'alex@example.com'}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="bg-transparent text-xs text-white focus:outline-none w-full"
@@ -152,7 +156,7 @@ export default function LoginPage() {
                 : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-950/50'
             }`}
           >
-            Sign In to Account <ArrowRight className="w-4 h-4" />
+            Authenticate & Access Portal <ArrowRight className="w-4 h-4" />
           </button>
         </form>
       </main>

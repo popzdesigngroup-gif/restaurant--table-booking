@@ -16,19 +16,22 @@ interface AuthContextType {
   login: (email: string, role: 'customer' | 'admin', name?: string, phone?: string) => void;
   logout: () => void;
   isAdmin: boolean;
+  isInitialized: boolean;
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   login: () => {},
   logout: () => {},
-  isAdmin: false
+  isAdmin: false,
+  isInitialized: false
 });
 
 const AUTH_STORAGE_KEY = 'tablevibe_auth_user';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<UserProfile | null>(null);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -37,27 +40,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         try {
           setUser(JSON.parse(stored));
         } catch (e) {
-          // Default demo customer
-          setUser({
-            id: 'usr-1',
-            name: 'Alex Wright',
-            email: 'alex.wright@example.com',
-            phone: '+1 (555) 234-5678',
-            role: 'customer'
-          });
+          setUser(null);
         }
-      } else {
-        // Default customer session
-        const defaultUser: UserProfile = {
-          id: 'usr-1',
-          name: 'Alex Wright',
-          email: 'alex.wright@example.com',
-          phone: '+1 (555) 234-5678',
-          role: 'customer'
-        };
-        setUser(defaultUser);
-        localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(defaultUser));
       }
+      setIsInitialized(true);
     }
   }, []);
 
@@ -83,7 +69,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isAdmin: user?.role === 'admin' }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        login,
+        logout,
+        isAdmin: user?.role === 'admin',
+        isInitialized
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
