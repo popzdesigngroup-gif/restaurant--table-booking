@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { UtensilsCrossed, LayoutGrid, CalendarCheck, BarChart3, Settings, Sparkles } from 'lucide-react';
+import { UtensilsCrossed, LayoutGrid, CalendarCheck, BarChart3, Settings, Activity, Sparkles } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
   const pathname = usePathname();
@@ -12,9 +12,10 @@ export const Navbar: React.FC = () => {
     { href: '/', label: 'Explore', icon: UtensilsCrossed },
     { href: '/restaurants/rest-1', label: 'Floor Plan View', icon: LayoutGrid },
     { href: '/my-bookings', label: 'My Bookings', icon: CalendarCheck },
-    { href: '/admin/editor', label: 'Owner Floor Editor', icon: Settings },
+    { href: '/admin/dashboard', label: 'Admin Monitor', icon: Activity },
+    { href: '/admin/editor', label: 'Floor Editor', icon: Settings },
     { href: '/admin/reservations', label: 'Live Manager', icon: CalendarCheck },
-    { href: '/admin/analytics', label: 'Analytics & Heatmap', icon: BarChart3 }
+    { href: '/admin/analytics', label: 'Heatmap & Metrics', icon: BarChart3 }
   ];
 
   return (
@@ -34,7 +35,7 @@ export const Navbar: React.FC = () => {
         </Link>
 
         {/* Desktop Nav Links */}
-        <nav className="hidden md:flex items-center gap-1.5 bg-slate-900/90 p-1.5 rounded-xl border border-slate-800">
+        <nav className="hidden lg:flex items-center gap-1 bg-slate-900/90 p-1.5 rounded-xl border border-slate-800">
           {links.map((link) => {
             const Icon = link.icon;
             const isActive = pathname === link.href;
@@ -42,7 +43,7 @@ export const Navbar: React.FC = () => {
               <Link
                 key={link.href}
                 href={link.href}
-                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
                   isActive
                     ? 'bg-emerald-600 text-white shadow-md shadow-emerald-950/40'
                     : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
@@ -61,7 +62,7 @@ export const Navbar: React.FC = () => {
             href="/restaurants/rest-1"
             className="flex items-center gap-1.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white px-4 py-2 rounded-xl text-xs font-bold transition shadow-lg shadow-emerald-950/40"
           >
-            <Sparkles className="w-3.5 h-3.5" /> Select Table Now
+            <Sparkles className="w-3.5 h-3.5" /> Reserve Table
           </Link>
         </div>
       </div>
