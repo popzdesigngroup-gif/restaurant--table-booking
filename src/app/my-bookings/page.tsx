@@ -2,18 +2,31 @@
 
 import React, { useState, useEffect } from 'react';
 import { Navbar } from '@/components/ui/Navbar';
-import { getStoredReservations } from '@/lib/storage';
+import { useAuth } from '@/context/AuthContext';
+import { getStoredReservationsForUser, getStoredReservations } from '@/lib/storage';
 import { Reservation } from '@/lib/types';
 import { QRCodeModal } from '@/components/ui/QRCodeModal';
-import { CalendarCheck, QrCode, Clock, MapPin, Users, CheckCircle, AlertCircle, XCircle } from 'lucide-react';
+import { CalendarCheck, QrCode, Clock, MapPin, Users, CheckCircle, Lock, ShieldCheck, XCircle } from 'lucide-react';
+import Link from 'next/link';
 
 export default function MyBookingsPage() {
+  const { user, isManager } = useAuth();
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [selectedQR, setSelectedQR] = useState<Reservation | null>(null);
 
   useEffect(() => {
-    setReservations(getStoredReservations());
-  }, []);
+    if (user) {
+      if (isManager) {
+        // Managers/Admins can inspect all reservations
+        setReservations(getStoredReservations());
+      } else {
+        // Customers see ONLY their own isolated reservations!
+        setReservations(getStoredReservationsForUser(user.email));
+      }
+    } else {
+      setReservations([]);
+    }
+  }, [user, isManager]);
 
   const getStatusBadge = (status: Reservation['status']) => {
     switch (status) {
@@ -28,6 +41,29 @@ export default function MyBookingsPage() {
     }
   };
 
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-100 selection:bg-emerald-500 selection:text-white pb-20">
+        <Navbar />
+        <main className="max-w-md mx-auto px-4 pt-16 text-center space-y-4">
+          <div className="w-12 h-12 rounded-2xl bg-indigo-500/20 border border-indigo-500/40 text-indigo-400 flex items-center justify-center mx-auto">
+            <Lock className="w-6 h-6" />
+          </div>
+          <h2 className="text-2xl font-bold text-white">Sign In to View Your Bookings</h2>
+          <p className="text-xs text-slate-400">
+            For data privacy & security, user booking histories are strictly isolated. Please sign in to view your reservations.
+          </p>
+          <Link
+            href="/login"
+            className="inline-block bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-6 py-2.5 rounded-xl text-xs transition shadow-lg"
+          >
+            Sign In to Account &rarr;
+          </Link>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 selection:bg-emerald-500 selection:text-white pb-20">
       <Navbar />
@@ -35,26 +71,33 @@ export default function MyBookingsPage() {
       <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 space-y-8">
         <div className="flex items-center justify-between border-b border-slate-800 pb-6">
           <div>
-            <h1 className="text-3xl font-black text-white flex items-center gap-3">
-              <CalendarCheck className="w-8 h-8 text-emerald-400" /> My Table Reservations
-            </h1>
-            <p className="text-sm text-slate-400 mt-1">View your confirmed table bookings, access QR check-in passes, or manage dates.</p>
+            <div className="flex items-center gap-2">
+              <h1 className="text-3xl font-black text-white flex items-center gap-3">
+                <CalendarCheck className="w-8 h-8 text-emerald-400" /> My Table Reservations
+              </h1>
+              <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2.5 py-0.5 rounded-full font-bold">
+                ISOLATED USER DATA ({user.email})
+              </span>
+            </div>
+            <p className="text-sm text-slate-400 mt-1">
+              Private reservation history for <span className="text-white font-bold">{user.name}</span>.
+            </p>
           </div>
         </div>
 
         {reservations.length === 0 ? (
           <div className="bg-slate-900 border border-slate-800 p-12 rounded-2xl text-center space-y-4">
             <CalendarCheck className="w-12 h-12 text-slate-600 mx-auto" />
-            <h3 className="text-lg font-bold text-white">No Active Reservations</h3>
+            <h3 className="text-lg font-bold text-white">No Active Reservations Found</h3>
             <p className="text-xs text-slate-400 max-w-sm mx-auto">
-              You haven't reserved any tables yet. Browse restaurants and pick your exact table on the floor plan!
+              You haven't reserved any tables under <span className="text-emerald-400 font-semibold">{user.email}</span> yet. Browse restaurants and pick your table!
             </p>
-            <a
+            <Link
               href="/"
               className="inline-block bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-6 py-2.5 rounded-xl text-xs transition"
             >
               Explore Restaurants &rarr;
-            </a>
+            </Link>
           </div>
         ) : (
           <div className="space-y-4">
@@ -88,7 +131,7 @@ export default function MyBookingsPage() {
                   )}
 
                   <div className="text-[11px] text-slate-400">
-                    Reserved for <span className="text-white font-semibold">{res.guestName}</span> ({res.guestEmail})
+                    Account: <span className="text-white font-semibold">{res.guestName}</span> ({res.guestEmail})
                   </div>
                 </div>
 

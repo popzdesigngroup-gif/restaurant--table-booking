@@ -35,7 +35,6 @@ export const updateStoredRestaurant = (updated: Restaurant): void => {
   }
   localStorage.setItem(RESTAURANTS_KEY, JSON.stringify(list));
 
-  // Sync to Supabase asynchronously if client is initialized
   if (supabase) {
     Promise.resolve(
       supabase.from('restaurants').upsert({
@@ -45,20 +44,6 @@ export const updateStoredRestaurant = (updated: Restaurant): void => {
       })
     ).catch(err => console.warn('Supabase sync warning:', err));
   }
-};
-
-export const updateTableStatus = (restaurantId: string, floorId: string, tableId: string, status: TableItem['status']): void => {
-  const restaurant = getStoredRestaurantById(restaurantId);
-  if (!restaurant) return;
-
-  const floor = restaurant.floors.find(f => f.id === floorId);
-  if (!floor) return;
-
-  const table = floor.tables.find(t => t.id === tableId);
-  if (!table) return;
-
-  table.status = status;
-  updateStoredRestaurant(restaurant);
 };
 
 export const getStoredReservations = (): Reservation[] => {
@@ -75,8 +60,34 @@ export const getStoredReservations = (): Reservation[] => {
   }
 };
 
+// Isolated retrieval: get reservations belonging ONLY to specific user email
+export const getStoredReservationsForUser = (userEmail?: string): Reservation[] => {
+  const all = getStoredReservations();
+  if (!userEmail) return [];
+  return all.filter((r) => r.guestEmail?.toLowerCase() === userEmail.toLowerCase());
+};
+
+// Check if a table is already booked for a specific date and timeSlot
+export const isTableBookedAtSlot = (tableId: string, date: string, timeSlot: string): boolean => {
+  const all = getStoredReservations();
+  return all.some(
+    (r) =>
+      r.tableId === tableId &&
+      r.date === date &&
+      r.timeSlot === timeSlot &&
+      r.status !== 'cancelled'
+  );
+};
+
 export const saveReservation = (res: Omit<Reservation, 'id' | 'createdAt' | 'qrCode'>): Reservation => {
   const reservations = getStoredReservations();
+
+  // Check overlap conflict
+  const isConflict = isTableBookedAtSlot(res.tableId, res.date, res.timeSlot);
+  if (isConflict) {
+    throw new Error(`Table ${res.tableNumber} is already booked for ${res.date} at ${res.timeSlot}. Please choose another time or date.`);
+  }
+
   const newId = `res-${Date.now()}`;
   const qrCode = `TVB-${newId.toUpperCase()}-${res.tableNumber}`;
 
@@ -92,7 +103,6 @@ export const saveReservation = (res: Omit<Reservation, 'id' | 'createdAt' | 'qrC
     localStorage.setItem(RESERVATIONS_KEY, JSON.stringify(reservations));
   }
 
-  // Sync to Supabase asynchronously if client is initialized
   if (supabase) {
     Promise.resolve(
       supabase.from('reservations').insert({
